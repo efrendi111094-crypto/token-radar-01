@@ -387,19 +387,35 @@ function gasFor(chain: string): string {
   return 'a few dollars of gas';
 }
 
+/** Farm-plan capital tiers, from the protocol's own TVL: a larger protocol earns a larger position. */
+const CAPITAL_TIERS = [
+  { min_tvl_usd: 1_000_000_000, capital_usd: 250 },
+  { min_tvl_usd: 100_000_000, capital_usd: 150 },
+] as const;
+/** The farm position for a protocol below every capital tier. */
+const CAPITAL_BASE_USD = 75;
+
 /** How much capital one farm position needs, from the protocol's own TVL. */
 function capitalFor(p: SnapshotProtocol): number {
-  if (p.tvl_usd >= 1_000_000_000) return 250;
-  if (p.tvl_usd >= 100_000_000) return 150;
-  return 75;
+  for (const tier of CAPITAL_TIERS) if (p.tvl_usd >= tier.min_tvl_usd) return tier.capital_usd;
+  return CAPITAL_BASE_USD;
 }
+
+/** Hold windows, from the protocol's age in days: younger protocols get a longer qualifying window. */
+const HOLD_WINDOWS = [
+  { max_age_days: 180, hold_days: 90 },
+  { max_age_days: 365, hold_days: 60 },
+] as const;
+/** The hold for a protocol of unknown age. */
+const HOLD_UNKNOWN_DAYS = 45;
+/** The hold for a protocol older than every window. */
+const HOLD_MATURE_DAYS = 30;
 
 /** How long to hold, from the protocol's age: younger protocols get a longer qualifying window. */
 function holdDaysFor(age: number | null): number {
-  if (age === null) return 45;
-  if (age < 180) return 90;
-  if (age < 365) return 60;
-  return 30;
+  if (age === null) return HOLD_UNKNOWN_DAYS;
+  for (const band of HOLD_WINDOWS) if (age < band.max_age_days) return band.hold_days;
+  return HOLD_MATURE_DAYS;
 }
 
 /** The category's one action, in the words a farmer can follow. */
